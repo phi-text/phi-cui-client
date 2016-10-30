@@ -1,0 +1,9 @@
+name: phi_cui_client
+version: 1.0.0
+description: Phi text editor for the command line.
+author: phantamanta44
+homepage: https://github.com/phi-text
+dependencies:
+  phi_editor:
+    git: git://github.com/phi-text/phi-editor.git
+  console:
