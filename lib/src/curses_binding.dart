@@ -1,58 +1,53 @@
-import 'package:console/console.dart';
-import 'package:console/curses.dart';
+import 'dart:io';
+
+import 'package:curses/curses.dart';
 import 'package:curses_abst/curses_abst.dart' as abst;
 
-class CLICanvas extends Window {
-  abst.Window _parent;
+List<Color> colourMap = [Color.BLACK, Color.RED, Color.GREEN, Color.YELLOW, Color.BLUE, Color.MAGENTA, Color.CYAN, Color.WHITE];
+Map<int, int> colourPairs = new Map();
+int pairId = 0;
 
-  List<QuadInt> _dirty = new List();
-
-  CLICanvas() : super('Phi');
-
-  @override
-  void draw() {
-    for (QuadInt reg in _dirty) {
-      for (int y = 0; y < reg.h; y++) {
-        for (int x = 0; x < reg.w; x++) {
-          abst.Cell cell = _parent.getCell(x, y);
-          Console.setBold(cell.bold);
-          Console.setItalic(cell.italic);
-          Console.setCrossedOut(cell.strikethrough);
-          Console.setUnderline(cell.underline);
-          Console.setBackgroundColor(cell.bg_col.index);
-          Console.setTextColor(cell.fg_col.index);
-          Console.write(cell.text != null ? cell.text : ' ');
-          Console.resetAll();
-        }
-      }
-    }
-  }
-
-  @override
-  void initialize() {
-    _dirty.add(new QuadInt(0, 0, _parent.width, _parent.height));
-    this.display();
-  }
+int attrForColour(abst.TermColour fg, abst.TermColour bg) {
+  int key = fg.index | (bg.index << 4);
+  if (colourPairs.containsKey(key))
+    return colourPairs[key];
+  stdscr.init_pair(pairId++, colourMap[fg.index], colourMap[bg.index]);
+  return pairId - 1;
 }
 
 class CLIWindow extends abst.Window {
-  CLICanvas _canvas;
-
   factory CLIWindow() {
-    CLIWindow window = new CLIWindow._pre();
-    window._canvas = new CLICanvas();
-    window._canvas._parent = window;
+    stdscr.setup();
+    stdscr.start_color();
+    Size size = stdscr.getmaxyx();
+    CLIWindow window = new CLIWindow._(size.columns, size.rows);
     return window;
   }
 
-  CLIWindow._pre() : super(Console.columns, Console.rows, () => new CLICell(), new CLICursor());
+  CLIWindow._(int x, int y) : super(x, y, () => new CLICell(), new CLICursor());
 
   @override
   void drawBuffer() => drawRegion(0, 0, width, height);
 
   @override
   void drawRegion(int xOff, int yOff, int width, int height) {
-    _canvas._dirty.add(new QuadInt(xOff, yOff, width, height));
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width; x++) {
+        abst.Cell cell = getCell(x, y);
+        List<Attribute> attrs = new List();
+        if (cell.bold) attrs.add(Attribute.BOLD);
+        if (cell.italic) attrs.add(Attribute.STANDOUT);
+        if (cell.strikethrough) attrs.add(Attribute.DIM);
+        if (cell.underline) attrs.add(Attribute.UNDERLINE);
+        stdscr.addstr(
+            cell.text == null ? ' ' : cell.text,
+            location: new Point(y, x),
+            maxLength: 1,
+            colorPair: attrForColour(cell.fg_col, cell.bg_col),
+            attributes: attrs
+        );
+      }
+    }
   }
 }
 

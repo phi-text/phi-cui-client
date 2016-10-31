@@ -6,4 +6,5 @@ homepage: https://github.com/phi-text
 dependencies:
   phi_editor:
     git: git://github.com/phi-text/phi-editor.git
-  console:
+  curses:
+    git: git://github.com/izaera/dart-curses.git
